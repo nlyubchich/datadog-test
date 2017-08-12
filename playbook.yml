@@ -1,25 +1,42 @@
 
-- hosts: all
+- hosts: ubuntu-512mb-fra1-01 
+  become: true
 
   roles:
-    - role: nginx,
-      nginx_http_params:
-        sendfile: "on"
-        access_log: "/var/log/nginx/access.log"
-        nginx_sites:
-        - server:
-           file_name: bar
-           listen: 8001
-           keepalive_timeout: 5
-           location1:
-             name: "/"
-             try_files: "$uri @proxy_to_app"
-           location2:
-             name: "@proxy_to_app"
-             proxy_set_header: "X-Forwarded-For $proxy_add_x_forwarded_for"
-             proxy_set_header: "Host $http_host"
-             proxy_redirect: off
-             proxy_pass: http://app_server
+    - role: telusdigital.python
+      python_requirements_file: "/vagrant/mysite/requirements.txt"
 
-     - role: telusdigital.python
-        python_requirements_file: mysite/requirements.txt
+    - role: jdauphant.nginx
+      nginx_http_params:
+        - sendfile "on"
+        - access_log "/var/log/nginx/access.log"
+      nginx_sites:
+        bar:
+           - listen 5000
+           - location / { proxy_pass http://127.0.0.1:8000; }
+      nginx_configs:
+        proxy:
+           - proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for
+           - proxy_set_header Host $http_host
+
+    - role: tersmitten.supervisor
+      supervisor_programs_present:
+        gunicorn:
+          command: 'gunicorn mysite.wsgi'
+          directory: /vagrant/mysite
+          autostart: true
+          autorestart: true
+          startretries: 3
+          stdout_logfile: /tmp/foo.out
+          stdout_logfile_maxbytes: 0
+          stderr_logfile: /tmp/foo.err
+          stderr_logfile_maxbytes: 0
+          user: vagrant
+          numprocs: 1
+          process_name: '%(program_name)s-%(process_num)s'
+
+      supervisor_groups_present:
+        app_server:
+          programs:
+            - gunicorn
+          priority: 10
