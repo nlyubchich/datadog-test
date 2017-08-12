@@ -1,3 +1,8 @@
+async-timeout==1.2.1
 Django==1.11.4
+gevent==1.2.2
+greenlet==0.4.12
 gunicorn==19.7.1
 pytz==2017.2
+setproctitle==1.1.10
+requests
